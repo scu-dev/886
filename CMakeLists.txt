@@ -37,22 +37,68 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
 #----------------------------------
 
+#-------------gperf----------------
+find_program(GPERF_EXECUTABLE NAMES gperf)
+if(NOT GPERF_EXECUTABLE)
+    message(FATAL_ERROR "gperf not found! Please install gperf and ensure it is in your PATH.")
+endif()
+
+set(GPERF_INTRINSIC_IN ${CMAKE_CURRENT_SOURCE_DIR}/src/perfs/intrinsic.gperf)
+set(GPERF_INTRINSIC_OUT ${CMAKE_CURRENT_BINARY_DIR}/intrinsic_hash.h)
+add_custom_command(
+    OUTPUT ${GPERF_INTRINSIC_OUT}
+    COMMAND ${GPERF_EXECUTABLE} --language=C++ --readonly-tables --output-file=${GPERF_INTRINSIC_OUT} ${GPERF_INTRINSIC_IN}
+    DEPENDS ${GPERF_INTRINSIC_IN}
+    COMMENT "Generating ${GPERF_INTRINSIC_OUT} from ${GPERF_INTRINSIC_IN} with gperf"
+    VERBATIM
+)
+set_source_files_properties(${GPERF_INTRINSIC_OUT} PROPERTIES GENERATED TRUE)
+add_custom_target(gperf_intrinsic DEPENDS ${GPERF_INTRINSIC_OUT})
+
+set(GPERF_CUSTOM_IN ${CMAKE_CURRENT_SOURCE_DIR}/src/perfs/custom.gperf)
+set(GPERF_CUSTOM_OUT ${CMAKE_CURRENT_BINARY_DIR}/custom_hash.h)
+add_custom_command(
+    OUTPUT ${GPERF_CUSTOM_OUT}
+    COMMAND ${GPERF_EXECUTABLE} --language=C++ --readonly-tables --output-file=${GPERF_CUSTOM_OUT} ${GPERF_CUSTOM_IN}
+    DEPENDS ${GPERF_CUSTOM_IN}
+    COMMENT "Generating ${GPERF_CUSTOM_OUT} from ${GPERF_CUSTOM_IN} with gperf"
+    VERBATIM
+)
+set_source_files_properties(${GPERF_CUSTOM_OUT} PROPERTIES GENERATED TRUE)
+add_custom_target(gperf_custom DEPENDS ${GPERF_CUSTOM_OUT})
+#----------------------------------
+
 #------------Files-----------------
 file(GLOB_RECURSE 886_SOURCES CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.cpp")
 #----------------------------------
 
 #---------------886----------------
 add_executable(${PROJECT_NAME} ${886_SOURCES})
+add_dependencies(${PROJECT_NAME} gperf_intrinsic)
+add_dependencies(${PROJECT_NAME} gperf_custom)
 #----------------------------------
 
 #------------Inclusions------------
 target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}
+    "libs/boost/assert/include"
+    "libs/boost/config/include"
+    "libs/boost/container_hash/include"
+    "libs/boost/core/include"
+    "libs/boost/describe/include"
+    "libs/boost/mp11/include"
+    "libs/boost/predef/include"
+    "libs/boost/static_assert/include"
+    "libs/boost/throw_exception/include"
+    "libs/boost/unordered/include"
     "libs/cli11/include"
 )
 #----------------------------------
 
 #------------Link------------------
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    
-)
+if(WIN32)
+    #Packing
+    target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/packing/windows")
+    target_sources(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/packing/windows/886.rc")
+endif()
 #----------------------------------
