@@ -1,5 +1,8 @@
 ﻿#include <string>
 
+#include "intrinsic_hash.h"
+#include "custom_hash.h"
+
 namespace Interpreter {
     using std::string;
 
