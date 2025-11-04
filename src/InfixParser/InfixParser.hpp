@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 
-#include "../concepts.hpp"
+#include "../util/concepts.hpp"
 
 namespace InfixParser {
     typedef uint8_t u8;
@@ -26,16 +26,16 @@ namespace InfixParser {
             struct {
                 unique_ptr<Expression> left, right;
                 Operator op;
-            };
+            } expr;
         };
         enum struct Type : u8 {
-            Literal, Expr, Count
+            Literal, Calculated, Count
         } type;
 
         #pragma warning(suppress : 26495)
-        Expression() noexcept : type(Type::Count), left(nullptr), right(nullptr) {}
+        Expression() noexcept : type(Type::Count) {}
         Expression(double literal) noexcept : type(Type::Literal), literal(literal) {}
-        Expression(const Expression& left, const Expression& right, Operator op) noexcept : type(Type::Expr), left(new Expression(left)), right(new Expression(right)), op(op) {}
+        Expression(const Expression& left, const Expression& right, Operator op) noexcept : type(Type::Calculated), expr{make_unique<Expression>(left), make_unique<Expression>(right), op} {}
         #pragma warning(suppress : 26495)
         Expression(const Expression& other) noexcept : type(other.type) {
             switch (type) {
@@ -43,11 +43,11 @@ namespace InfixParser {
                     literal = other.literal;
                     break;
                 }
-                case Type::Expr: {
-                    auto tempLeft = make_unique<Expression>(*other.left), tempRight = make_unique<Expression>(*other.right);
-                    new (&left) unique_ptr<Expression>(move(tempLeft));
-                    new (&right) unique_ptr<Expression>(move(tempRight));
-                    op = other.op;
+                case Type::Calculated: {
+                    auto tempLeft = make_unique<Expression>(*other.expr.left), tempRight = make_unique<Expression>(*other.expr.right);
+                    new (&expr.left) unique_ptr<Expression>(move(tempLeft));
+                    new (&expr.right) unique_ptr<Expression>(move(tempRight));
+                    expr.op = other.expr.op;
                     break;
                 }
                 default: break;
@@ -59,9 +59,9 @@ namespace InfixParser {
             return *new (this) Expression(other);
         }
         ~Expression() {
-            if (type == Type::Expr) {
-                left.~unique_ptr();
-                right.~unique_ptr();
+            if (type == Type::Calculated) {
+                expr.left.~unique_ptr();
+                expr.right.~unique_ptr();
             }
         }
     };

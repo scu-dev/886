@@ -158,17 +158,17 @@ namespace InfixParser {
         return parse(trimmed, result, 0);
     }
 
-    [[nodiscard]] constexpr static bool calculate(const Expression& expr, double& result) noexcept {
+    [[nodiscard]] static bool calculate(const Expression& expr, double& result) noexcept {
         switch (expr.type) {
             case Expression::Type::Literal: {
                 result = expr.literal;
                 return true;
             }
-            case Expression::Type::Expr: {
+            case Expression::Type::Calculated: {
                 double lhsResult = 0.0, rhsResult = 0.0;
-                if (!calculate(*expr.left.get(), lhsResult)) return false;
-                if (!calculate(*expr.right.get(), rhsResult)) return false;
-                switch (expr.op) {
+                if (!calculate(*expr.expr.left.get(), lhsResult)) return false;
+                if (!calculate(*expr.expr.right.get(), rhsResult)) return false;
+                switch (expr.expr.op) {
                     case Operator::Add: {
                         result = lhsResult + rhsResult;
                         return true;
